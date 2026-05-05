@@ -12,7 +12,7 @@ import wandb
 
 class Trainer(object):
 
-    def __init__(self,model,args,lr_min=1e-6,lr_factor=0,lr_patience=5,clipgrad=1000):
+    def __init__(self,model,args,lr_min=1e-6,lr_factor=3.0,lr_patience=5,clipgrad=1000):
         self.model=model
         self.device = args.device
         self.lr_min=lr_min

@@ -28,7 +28,7 @@ class BayesianLinear(nn.Module):
         # rho initialization
         rho_base = self._get_init_rho((out_features, in_features), args)
         self.weight_rho = nn.Parameter(rho_base + torch.empty((out_features, in_features),
-                                      device=self.device, dtype=torch.float32).normal_(0.0, 1.0),requires_grad=True)
+                                      device=self.device, dtype=torch.float32).normal_(0.0, 0.01),requires_grad=True)
         
         self.weight = VariationalPosterior(self.weight_mu, self.weight_rho, self.device)
 
@@ -38,7 +38,7 @@ class BayesianLinear(nn.Module):
             
             b_rho_base = self._get_init_rho((out_features,), args)
             self.bias_rho = nn.Parameter(b_rho_base + torch.empty((out_features,),
-                                      device=self.device, dtype=torch.float32).normal_(0., 0.1),requires_grad=True)
+                                      device=self.device, dtype=torch.float32).normal_(0., 0.01),requires_grad=True)
             self.bias = VariationalPosterior(self.bias_mu, self.bias_rho, self.device)
         else:
             self.register_parameter('bias', None)            
@@ -87,7 +87,7 @@ class BayesianLinear(nn.Module):
         # New weight rows
         new_w_mu = torch.empty((n_new, self.in_features), device=device, dtype=torch.float32).normal_(0., 0.1)
         new_w_rho_base = self._get_init_rho((n_new, self.in_features), self.args)
-        new_w_rho = new_w_rho_base + torch.empty((n_new, self.in_features), device=device, dtype=torch.float32).normal_(0., 0.1)
+        new_w_rho = new_w_rho_base + torch.empty((n_new, self.in_features), device=device, dtype=torch.float32).normal_(0., 0.01)
 
         self.weight_mu = nn.Parameter(torch.cat([self.weight_mu.data, new_w_mu], dim=0), requires_grad=True)
         self.weight_rho = nn.Parameter(torch.cat([self.weight_rho.data, new_w_rho], dim=0), requires_grad=True)
@@ -99,7 +99,7 @@ class BayesianLinear(nn.Module):
         if self.use_bias:
             new_b_mu = torch.empty((n_new,), device=device, dtype=torch.float32).normal_(0., 0.1)
             new_b_rho_base = self._get_init_rho((n_new,), self.args)
-            new_b_rho = new_b_rho_base + torch.empty((n_new,), device=device, dtype=torch.float32).normal_(0., 0.1)
+            new_b_rho = new_b_rho_base + torch.empty((n_new,), device=device, dtype=torch.float32).normal_(0., 0.01)
 
             self.bias_mu = nn.Parameter(torch.cat([self.bias_mu.data, new_b_mu], dim=0), requires_grad=True)
             self.bias_rho = nn.Parameter(torch.cat([self.bias_rho.data, new_b_rho], dim=0), requires_grad=True)
@@ -119,7 +119,7 @@ class BayesianLinear(nn.Module):
         # New weight columns
         new_w_mu = torch.empty((self.out_features, n_new), device=device, dtype=torch.float32).normal_(0., 0.1)
         new_w_rho_base = self._get_init_rho((self.out_features, n_new), self.args)
-        new_w_rho = new_w_rho_base + torch.empty((self.out_features, n_new), device=device, dtype=torch.float32).normal_(0., 0.1)
+        new_w_rho = new_w_rho_base + torch.empty((self.out_features, n_new), device=device, dtype=torch.float32).normal_(0., 0.01)
 
         self.weight_mu = nn.Parameter(torch.cat([self.weight_mu.data, new_w_mu], dim=1), requires_grad=True)
         self.weight_rho = nn.Parameter(torch.cat([self.weight_rho.data, new_w_rho], dim=1), requires_grad=True)
@@ -174,8 +174,12 @@ class BayesianLinear(nn.Module):
                     self.log_prior = self.weight_prior.log_prob(weight)
                     self.log_variational_posterior = self.weight.log_prob(weight)
             elif reg_mode == 'sns':
+                w_sigma = torch.log1p(torch.exp(self.weight_rho))
                 if self.use_bias:
-                    self.log_prior = self.weight_prior.log_prob(self.weight.sigma) + self.bias_prior.log_prob(self.bias.sigma)
+                    b_sigma = torch.log1p(torch.exp(self.bias_rho))
+                    self.log_prior = self.weight_prior.log_prob(w_sigma) + self.bias_prior.log_prob(b_sigma)
+                else:
+                    self.log_prior = self.weight_prior.log_prob(w_sigma)
                 self.log_variational_posterior = torch.tensor(0.0, device=self.device)
             
         else:

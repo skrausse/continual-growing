@@ -13,15 +13,15 @@ class VariationalPosterior(torch.nn.Module):
         self.sigma = torch.log1p(torch.exp(self.rho)).to(self.device)
 
     def sample(self):
+        sigma = torch.log1p(torch.exp(self.rho))
         epsilon = self.normal.sample(self.rho.size()).to(self.device)
-        # reparametrizarion trick for sampling from posterior
-        posterior_sample = (self.mu + self.sigma * epsilon).to(self.device)
-        return posterior_sample
+        return (self.mu + sigma * epsilon).to(self.device)
 
     def log_prob(self, input):
+        sigma = torch.log1p(torch.exp(self.rho))
         return (-math.log(math.sqrt(2 * math.pi))
-                - torch.log(self.sigma)
-                - ((input - self.mu) ** 2) / (2 * self.sigma ** 2)).sum()
+                - torch.log(sigma)
+                - ((input - self.mu) ** 2) / (2 * sigma ** 2)).sum()
 
 
 
