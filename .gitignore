@@ -8,3 +8,4 @@ wandb/
 *.log
 .venv/
 CLAUDE.md
+checkpoints/
