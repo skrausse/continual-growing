@@ -7,3 +7,4 @@ wandb/
 *.ckpt
 *.log
 .venv/
+CLAUDE.md
