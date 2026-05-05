@@ -108,6 +108,13 @@ class BayesianLinear(nn.Module):
             new_bias_mask = torch.ones(n_new, dtype=torch.bool, device=device)
             self.bias_mask_new = torch.cat([self.bias_mask_new, new_bias_mask], dim=0)
 
+        # Extend GaussianPrior if one has been set (prior update happened before this growth)
+        from .distributions import GaussianPrior
+        if isinstance(self.weight_prior, GaussianPrior):
+            self.weight_prior.extend_output(n_new, self.in_features)
+        if self.use_bias and isinstance(self.bias_prior, GaussianPrior):
+            self.bias_prior.extend_bias(n_new)
+
         self.out_features += n_new
         self._rebuild_posteriors()
 
@@ -131,6 +138,11 @@ class BayesianLinear(nn.Module):
         # Bias is unaffected by input growth, but older features are no longer "new"
         if self.use_bias and self.bias_mask_new is not None:
             self.bias_mask_new.fill_(False)
+
+        # Extend GaussianPrior if one has been set
+        from .distributions import GaussianPrior
+        if isinstance(self.weight_prior, GaussianPrior):
+            self.weight_prior.extend_input(self.out_features, n_new)
 
         self.in_features += n_new
         self._rebuild_posteriors()

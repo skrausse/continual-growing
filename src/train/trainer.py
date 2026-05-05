@@ -135,6 +135,8 @@ class Trainer(object):
         # Restore best
         self.model.load_state_dict(copy.deepcopy(best_model))
         self.save_model(t)
+        # Freeze current posterior as the prior for the next task
+        self.update_prior()
     
     def update_lr(self, t, lr_mu=None, lr_sigma=None, adaptive_lr=False):
         params_dict = []
@@ -181,9 +183,9 @@ class Trainer(object):
                     w_unc = torch.log1p(torch.exp(m.weight_rho.data))
                     b_unc = torch.log1p(torch.exp(m.bias_rho.data))
                     
-                    # create parameter-wise learning rates
-                    w_lr = torch.mul(w_unc, current_lr_mu)
-                    b_lr = torch.mul(b_unc, current_lr_mu)
+                    # create parameter-wise learning rates (cap at lr_mu to prevent runaway)
+                    w_lr = torch.mul(w_unc.clamp(max=1.0), current_lr_mu)
+                    b_lr = torch.mul(b_unc.clamp(max=1.0), current_lr_mu)
 
                     if hasattr(m, 'weight_mask_new') and m.weight_mask_new is not None:
                         w_lr[m.weight_mask_new] = current_lr_mu
@@ -558,6 +560,24 @@ class Trainer(object):
         #     # while math.isnan(nll):
         #         # nll = 1e-5*torch.nn.functional.nll_loss(outputs.mean(0), target, reduction='sum')
 
+
+    def update_prior(self):
+        """
+        Set each layer's prior to its current posterior (VCL prior update).
+        Call this after each task finishes. The prior becomes N(mu, sigma) per weight,
+        so confident weights (small sigma) get a tight prior that resists future change.
+        """
+        from networks.distributions import GaussianPrior
+        for name, m in self.model.named_modules():
+            if isinstance(m, BayesianLinear):
+                mu0 = m.weight_mu.data.clone()
+                sigma0 = torch.log1p(torch.exp(m.weight_rho.data))
+                m.weight_prior = GaussianPrior(mu0, sigma0, self.device).to(self.device)
+                if m.use_bias:
+                    b_mu0 = m.bias_mu.data.clone()
+                    b_sigma0 = torch.log1p(torch.exp(m.bias_rho.data))
+                    m.bias_prior = GaussianPrior(b_mu0, b_sigma0, self.device).to(self.device)
+        print('  [prior updated] posterior frozen as prior for next task')
 
     def save_model(self,t):
         torch.save({'model_state_dict': self.model.state_dict(),
