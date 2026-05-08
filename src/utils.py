@@ -89,19 +89,19 @@ def print_log_acc_bwt(args, acc, lss):
     for i in range(acc.shape[0]):
         print('\t',end=',')
         for j in range(acc.shape[1]):
-            print('{:5.4f}% '.format(acc[i,j]),end=',')
+            print('{:5.2f}% '.format(100*acc[i,j]),end=',')
         print()
 
     avg_acc = np.mean(acc[acc.shape[0]-1,:])
-    print ('ACC: {:5.4f}%'.format(avg_acc))
+    print ('ACC: {:5.2f}%'.format(100*avg_acc))
     print()
     print()
 
     grow_bwt = (acc[-1] - np.diag(acc)).mean()
-    print ('BWT : {:5.2f}%'.format(grow_bwt))
+    print ('BWT : {:5.2f}%'.format(100*grow_bwt))
 
     grow_fwt = (acc[0,0] - np.diag(acc)).mean()
-    print ('FWT : {:5.2f}%'.format(grow_fwt))
+    print ('FWT : {:5.2f}%'.format(100*grow_fwt))
 
     print('*'*100)
     print('Done!')
